@@ -170,6 +170,28 @@
     .checkout input,.checkout select,.checkout textarea{width:100%;background:#0c0b09;color:#f6efe5;border:1px solid #695136;border-radius:10px;padding:12px}
     .checkout textarea{resize:vertical;min-height:60px}
     .checkout small{display:block;color:#a79886;margin-top:10px;line-height:1.5}
+    .drawer{overflow-y:auto}
+    .drawer .cart-list{flex:0 0 auto;max-height:28vh}
+    .drawer .checkout{flex:0 0 auto}
+    /* Simulador de frete por distância rodoviária */
+    .checkout .total-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:14px;color:#e6d6c0}
+    .checkout .total-row strong{color:var(--gold-soft)}
+    .checkout .grand-total{border-top:1px solid #59452e;padding-top:13px;margin:15px 0 16px;font:800 21px Outfit,sans-serif;color:var(--text)}
+    .grand-total strong{font-size:23px}
+    .shipping-box{border:1px solid #69502f;border-radius:13px;padding:14px;margin:14px 0;background:linear-gradient(150deg,#272016,#1a1510)}
+    .shipping-box b{color:var(--gold-soft)}
+    .shipping-box p{margin:7px 0 12px;font-size:12px;line-height:1.6;color:#d8c6a9}
+    .shipping-box button{width:100%;border:1px solid #c99b50;border-radius:10px;background:#39291b;color:#ffe3a9;padding:11px 14px;font-size:13px;font-weight:900}
+    .shipping-box button:hover{background:#513a25}
+    .shipping-box button:disabled{opacity:.55;cursor:wait}
+    .shipping-status{font-size:12px;line-height:1.55;color:#e4d0af;min-height:18px;margin-top:11px}
+    .shipping-status[data-state="error"]{color:#ffb8a7}
+    .shipping-status[data-state="success"]{color:#b7f0c3}
+    .shipping-verified{font-size:12px;display:block;margin-top:10px;color:#dac8ae}
+    .shipping-verified input{width:auto;margin-right:6px;accent-color:var(--gold)}
+    .address-row{display:grid;grid-template-columns:1fr 105px;gap:10px}
+    @media(max-width:420px){.address-row{grid-template-columns:1fr}}
+
 
     @media (max-width: 1000px){
       .hero-inner,.showcase,.contact-grid{grid-template-columns:1fr}
@@ -266,7 +288,7 @@
 
         <div class="tabs" id="tabs" role="tablist" aria-label="Dias do cardápio"></div>
         <div class="cards" id="cards"></div>
-        <div class="info">ℹ️ Os itens e os horários de entrega estão sujeitos à disponibilidade do dia. A taxa de entrega é informada pela equipe no WhatsApp.</div>
+        <div class="info">ℹ️ Os itens e os horários de entrega estão sujeitos à disponibilidade do dia. Frete: R$ 1,00/km rodado até 15 km; acima disso, taxa fixa de R$ 15,00. O total é calculado no checkout quando o endereço é localizado.</div>
 
         <div class="showcase">
           <div class="showcase-panel">
@@ -378,21 +400,33 @@
     </div>
     <div class="cart-list" id="cartList"></div>
     <div class="checkout">
-      <div class="total"><span>Subtotal</span><b id="total">R$ 0,00</b></div>
+      <div class="total"><span>Produtos</span><b id="total">R$ 0,00</b></div>
       <label for="clientName">Seu nome</label>
       <input id="clientName" placeholder="Como podemos chamar você?" autocomplete="name" />
 
       <label for="fulfilment">Como deseja receber?</label>
       <select id="fulfilment" onchange="toggleAddress()">
         <option value="Entrega">Entrega</option>
-        <option value="Retirada">Retirada no local</option>
+        <option value="Retirada">Retirada no local (sem frete)</option>
       </select>
 
       <div id="addressArea">
-        <label for="clientAddress">Endereço de entrega</label>
-        <input id="clientAddress" placeholder="Rua, número, bairro e complemento" autocomplete="street-address" />
+        <label for="clientAddress">Rua, número e bairro para entrega</label>
+        <input id="clientAddress" placeholder="Ex.: Rua Apucarana, 82, Jardim Sabiá" autocomplete="street-address" />
+        <div class="address-row">
+          <div><label for="clientCity">Cidade</label><input id="clientCity" value="Cotia" placeholder="Cidade" autocomplete="address-level2" /></div>
+          <div><label for="clientZip">CEP (opcional)</label><input id="clientZip" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" /></div>
+        </div>
+        <div class="shipping-box">
+          <b>🛵 Calcular taxa de entrega</b>
+          <p>Saída: Estrada do Capuava, 301 — Jardim Sabiá, Cotia/SP.<br>R$ 1,00 por km de carro até 15 km. Acima de 15 km, taxa fixa de R$ 15,00.</p>
+          <button id="calculateShippingButton" type="button" onclick="calculateShipping()">Calcular frete pela rota</button>
+          <div id="shippingStatus" class="shipping-status" role="status" aria-live="polite">Informe o endereço e calcule o frete antes de finalizar.</div>
+          <label class="shipping-verified" id="shippingVerifiedArea" style="display:none"><input type="checkbox" id="shippingVerified" onchange="updateShippingTotals()" /> Confirme que o endereço encontrado corresponde à sua entrega.</label>
+        </div>
       </div>
-
+      <div class="total-row"><span>Taxa de entrega</span><strong id="shippingFee">A calcular</strong></div>
+      <div class="total-row grand-total"><span>Total do pedido</span><strong id="grandTotal">—</strong></div>
       <label for="payment">Forma de pagamento</label>
       <select id="payment">
         <option value="A combinar">A combinar pelo WhatsApp</option>
@@ -403,8 +437,8 @@
 
       <label for="notes">Observações (opcional)</label>
       <textarea id="notes" placeholder="Ex.: sem cebola, troco para R$ 50, retirar no local etc."></textarea>
-      <button class="cta" style="width:100%;margin-top:14px" onclick="sendOrder()">Enviar pedido pelo WhatsApp</button>
-      <small>O pedido será confirmado pela equipe no WhatsApp. A taxa de entrega, quando houver, será informada no atendimento.</small>
+      <button class="cta" id="sendOrderButton" style="width:100%;margin-top:14px" onclick="sendOrder()">Enviar pedido com total para o WhatsApp</button>
+      <small>O site calcula o frete por distância rodoviária após conferir o endereço. O pedido só é enviado quando você confirma a mensagem no WhatsApp. Disponibilidade e prazo são confirmados pela equipe.</small>
     </div>
   </aside>
 
@@ -578,12 +612,17 @@
     function addItem(i){ cart[i] = (cart[i] || 0) + 1; save(); openCart(); }
     function changeQty(i, delta){ cart[i] = (cart[i] || 0) + delta; if(cart[i] <= 0) delete cart[i]; save(); }
 
+    function currentSubtotal(){
+      return Object.entries(cart).reduce((sum,[i,q]) => sum + (dishes[i] ? dishes[i].price * q : 0), 0);
+    }
+
     function renderCart(){
       const entries = Object.entries(cart).filter(([i,q]) => dishes[i] && q > 0);
       const count = entries.reduce((s,[,q]) => s + q, 0);
-      const subtotal = entries.reduce((s,[i,q]) => s + dishes[i].price * q, 0);
+      const subtotal = currentSubtotal();
       document.getElementById('cartCount').textContent = count;
       document.getElementById('total').textContent = format(subtotal);
+      updateShippingTotals();
       document.getElementById('cartList').innerHTML = entries.length ? entries.map(([i,q]) => `
         <div class="cart-item">
           <div>
@@ -602,40 +641,194 @@
 
     function openCart(){ renderCart(); document.getElementById('drawer').classList.add('show'); document.getElementById('overlay').classList.add('show'); document.body.style.overflow='hidden'; }
     function closeCart(){ document.getElementById('drawer').classList.remove('show'); document.getElementById('overlay').classList.remove('show'); document.body.style.overflow=''; }
-    function toggleAddress(){ document.getElementById('addressArea').style.display = document.getElementById('fulfilment').value === 'Entrega' ? 'block' : 'none'; }
+    // INTEGRAÇÃO DE ROTAS: crie uma chave gratuita em https://myprojects.geoapify.com/
+    // Autorize o domínio do seu GitHub Pages nas restrições HTTP Referer/CORS da chave.
+    // Como o site é estático, a chave estará visível no HTML. Não use chaves privadas de servidor.
+    const GEOAPIFY_API_KEY = ''; // COLE A CHAVE GEOAPIFY AQUI
+    const ORIGIN_ADDRESS = 'Estrada do Capuava, 301, Jardim Sabiá, Cotia, SP, 06716-580, Brasil';
+    // Se o geocodificador não reconhecer o restaurante, você pode fixar o ponto do estabelecimento:
+    const ORIGIN_COORDINATES = null; // opcional: {lat: -23.0, lon: -46.0} (use coordenadas verificadas)
+    const SHIPPING_PRICE_PER_KM = 1.00;
+    const SHIPPING_LIMIT_KM = 15;
+    const SHIPPING_CAP_BRL = 15.00;
+    let originLocationCache = null;
+    let shippingQuote = null;
+    let shippingRequestId = 0;
+    let isCalculatingShipping = false;
 
-    function sendOrder(){
+    // O frete é definido pela distância real de carro (não distância em linha reta).
+    function shippingValueFromDistance(distanceKm){
+      return Math.round(Math.min(SHIPPING_CAP_BRL, distanceKm * SHIPPING_PRICE_PER_KM) * 100) / 100;
+    }
+    function fullDeliveryAddress(){
+      const street = document.getElementById('clientAddress').value.trim();
+      const city = document.getElementById('clientCity').value.trim();
+      const zip = document.getElementById('clientZip').value.trim();
+      return [street, city, 'São Paulo', zip, 'Brasil'].filter(Boolean).join(', ');
+    }
+    function setShippingStatus(text, state='info'){
+      const element = document.getElementById('shippingStatus');
+      element.textContent = text;
+      element.dataset.state = state;
+    }
+    function invalidateShipping(){
+      shippingRequestId++;
+      shippingQuote = null;
+      document.getElementById('shippingVerified').checked = false;
+      document.getElementById('shippingVerifiedArea').style.display = 'none';
+      if(document.getElementById('fulfilment').value === 'Entrega'){
+        setShippingStatus('Endereço alterado. Recalcule a rota e confirme o endereço antes de finalizar.');
+      }
+      updateShippingTotals();
+    }
+    function updateShippingTotals(){
+      const pickup = document.getElementById('fulfilment').value === 'Retirada';
+      const verified = document.getElementById('shippingVerified').checked;
+      const addressIsCurrent = shippingQuote && shippingQuote.address === fullDeliveryAddress();
+      const quoteValid = !pickup && addressIsCurrent && verified;
+      const subtotal = currentSubtotal();
+      document.getElementById('shippingFee').textContent = pickup ? format(0) : quoteValid ? format(shippingQuote.fee) : shippingQuote && addressIsCurrent ? format(shippingQuote.fee) + ' (confirmar endereço)' : 'A calcular';
+      document.getElementById('grandTotal').textContent = pickup ? format(subtotal) : quoteValid ? format(subtotal + shippingQuote.fee) : '—';
+    }
+    function toggleAddress(){
+      const pickup = document.getElementById('fulfilment').value === 'Retirada';
+      document.getElementById('addressArea').style.display = pickup ? 'none' : 'block';
+      if(!pickup && !shippingQuote) setShippingStatus('Informe o endereço e calcule o frete antes de finalizar.');
+      updateShippingTotals();
+    }
+    function validateDeliveryAddress(){
+      const address = document.getElementById('clientAddress').value.trim();
+      const city = document.getElementById('clientCity').value.trim();
+      if(address.length < 8 || !/\d/.test(address)){
+        throw new Error('Informe rua, número e bairro no endereço.');
+      }
+      if(city.length < 2){
+        throw new Error('Informe a cidade de entrega.');
+      }
+      const zip = document.getElementById('clientZip').value.replace(/\D/g,'');
+      if(zip && zip.length !== 8){
+        throw new Error('O CEP deve conter 8 números, ou deixe esse campo vazio.');
+      }
+    }
+    async function geoapifyGet(url){
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try{
+        const res = await fetch(url, {signal:controller.signal});
+        if(!res.ok) throw new Error('Serviço de rotas indisponível (' + res.status + ').');
+        return await res.json();
+      } finally { clearTimeout(timeout); }
+    }
+    async function geocodeAddress(text, requireHouseNumber){
+      const params = new URLSearchParams({text,format:'json',limit:'3',filter:'countrycode:br',apiKey:GEOAPIFY_API_KEY});
+      const result = await geoapifyGet('https://api.geoapify.com/v1/geocode/search?' + params);
+      const candidates = Array.isArray(result.results) ? result.results : [];
+      const point = candidates.find(p => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)) &&
+        ['building','amenity','street','unknown'].includes(p.result_type) &&
+        (!p.rank || typeof p.rank.confidence_street_level !== 'number' || p.rank.confidence_street_level >= 0.62));
+      if(!point) throw new Error(requireHouseNumber ? 'Não localizamos essa rua com segurança. Confira rua, número, bairro e CEP.' : 'Não conseguimos localizar o restaurante com segurança. Verifique o ponto de origem.');
+      if(requireHouseNumber && !point.housenumber){
+        // Uma rua sem número pode ter vários quilômetros: não cobre frete com falsa precisão.
+        throw new Error('Não foi possível confirmar o número do imóvel. Informe o CEP e um endereço mais específico.');
+      }
+      return {lat:Number(point.lat),lon:Number(point.lon),formatted:point.formatted || text};
+    }
+    async function calculateShipping(){
+      if(document.getElementById('fulfilment').value !== 'Entrega') return true;
+      if(isCalculatingShipping) return false;
+      const requestId = ++shippingRequestId;
+      const address = fullDeliveryAddress();
+      const btn = document.getElementById('calculateShippingButton');
+      try{
+        validateDeliveryAddress();
+        if(!GEOAPIFY_API_KEY.trim()) throw new Error('Cálculo automático ainda não configurado. O responsável pelo site precisa inserir uma chave Geoapify.');
+        isCalculatingShipping = true;
+        btn.disabled = true;
+        btn.textContent = 'Calculando rota...';
+        shippingQuote = null;
+        document.getElementById('shippingVerified').checked = false;
+        document.getElementById('shippingVerifiedArea').style.display = 'none';
+        updateShippingTotals();
+        setShippingStatus('Localizando endereços e consultando a rota de carro...');
+        const origin = ORIGIN_COORDINATES || originLocationCache || await geocodeAddress(ORIGIN_ADDRESS,true);
+        if(!originLocationCache) originLocationCache = origin;
+        const destination = await geocodeAddress(address,true);
+        if(requestId !== shippingRequestId) return false;
+        const waypoints = `${origin.lat},${origin.lon}|${destination.lat},${destination.lon}`;
+        const url = 'https://api.geoapify.com/v1/routing?' + new URLSearchParams({waypoints,mode:'drive',format:'geojson',apiKey:GEOAPIFY_API_KEY});
+        const result = await geoapifyGet(url);
+        if(requestId !== shippingRequestId) return false;
+        const distanceMeters = Number(result?.features?.[0]?.properties?.distance);
+        if(!Number.isFinite(distanceMeters) || distanceMeters <= 0) throw new Error('Não foi possível obter uma rota de carro até o endereço informado.');
+        const distanceKm = distanceMeters / 1000;
+        const fee = shippingValueFromDistance(distanceKm);
+        shippingQuote = {address,origin,destination,distanceKm,fee};
+        document.getElementById('shippingVerifiedArea').style.display = 'block';
+        setShippingStatus(`Rota encontrada: ${distanceKm.toFixed(2).replace('.',',')} km de carro. Frete: ${format(fee)}. Endereço localizado: ${destination.formatted}. Confirme se está correto.`, 'success');
+        updateShippingTotals();
+        return true;
+      } catch(err){
+        if(requestId === shippingRequestId){
+          shippingQuote = null;
+          setShippingStatus(err?.name === 'AbortError' ? 'O serviço de rotas demorou demais. Tente novamente.' : err.message || 'Não foi possível calcular a rota.', 'error');
+          updateShippingTotals();
+        }
+        return false;
+      } finally {
+        isCalculatingShipping = false;
+        btn.disabled = false;
+        btn.textContent = 'Recalcular frete pela rota';
+      }
+    }
+
+    async function sendOrder(){
       const items = Object.entries(cart).filter(([i,q]) => dishes[i] && q > 0);
       if(!items.length){ alert('Adicione pelo menos uma marmita ao pedido.'); return; }
       const name = document.getElementById('clientName').value.trim();
       const fulfilment = document.getElementById('fulfilment').value;
+      const pickup = fulfilment === 'Retirada';
       const address = document.getElementById('clientAddress').value.trim();
       const payment = document.getElementById('payment').value;
       const notes = document.getElementById('notes').value.trim();
-
       if(!name){ alert('Informe seu nome.'); document.getElementById('clientName').focus(); return; }
-      if(fulfilment === 'Entrega' && !address){ alert('Informe o endereço para entrega.'); document.getElementById('clientAddress').focus(); return; }
-
-      const subtotal = items.reduce((s,[i,q]) => s + dishes[i].price * q, 0);
+      if(!pickup){
+        try{ validateDeliveryAddress(); }catch(err){alert(err.message);return;}
+        if(!shippingQuote || shippingQuote.address !== fullDeliveryAddress()){
+          const calculated = await calculateShipping();
+          if(!calculated) { document.getElementById('shippingStatus').scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
+        }
+        if(!document.getElementById('shippingVerified').checked){
+          alert('Confira e confirme o endereço localizado pelo mapa antes de enviar.');
+          document.getElementById('shippingVerified').focus();
+          return;
+        }
+      }
+      const subtotal = currentSubtotal();
+      const shippingFee = pickup ? 0 : shippingQuote.fee;
+      const grandTotal = subtotal + shippingFee;
       const lines = items.map(([i,q]) => `• ${q}x ${dishes[i].name} (${dishes[i].day}) — ${format(dishes[i].price * q)}`);
       const message = [
         'Olá! Gostaria de fazer um pedido no Hype Gastrobar. 🍽️',
-        '',
-        '*PEDIDO*',
-        ...lines,
-        '',
-        `*Subtotal:* ${format(subtotal)} (sem taxa de entrega)`,
-        `*Nome:* ${name}`,
+        '', '*PEDIDO*', ...lines, '',
+        `*Subtotal dos produtos:* ${format(subtotal)}`,
+        ...(pickup ? ['*Entrega:* Retirada no local — grátis'] : [
+          '*Saída:* Estrada do Capuava, 301 — Jardim Sabiá, Cotia/SP',
+          `*Distância pela rota de carro:* ${shippingQuote.distanceKm.toFixed(2).replace('.',',')} km`,
+          `*Taxa de entrega:* ${format(shippingFee)}`
+        ]),
+        `*TOTAL DO PEDIDO:* ${format(grandTotal)}`,
+        '', `*Nome:* ${name}`,
         `*Modalidade:* ${fulfilment}`,
-        ...(fulfilment === 'Entrega' ? [`*Endereço:* ${address}`] : []),
+        ...(pickup ? [] : [`*Endereço:* ${fullDeliveryAddress()}`, `*Endereço encontrado no mapa:* ${shippingQuote.destination.formatted}`]),
         `*Pagamento:* ${payment}`,
         ...(notes ? [`*Observações:* ${notes}`] : []),
-        '',
-        'Por favor, confirmem a disponibilidade, o total com entrega (se aplicável) e o prazo.'
+        '', 'Por favor, confirmem disponibilidade e prazo. Obrigado!'
       ].join('\n');
-
-      window.open('https://wa.me/5511925135882?text=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
+      window.location.href = 'https://wa.me/5511925135882?text=' + encodeURIComponent(message);
     }
+    ['clientAddress','clientCity','clientZip'].forEach(id =>
+      document.getElementById(id).addEventListener('input', invalidateShipping)
+    );
 
     const today = new Date().getDay();
     selected = ({1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado'})[today] || 'Todos os dias';
