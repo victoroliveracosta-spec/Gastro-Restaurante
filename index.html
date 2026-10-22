@@ -292,12 +292,13 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">✦ adega Hype</div>
-            <h2>Bebidas para todos os <span class="gold">momentos</span></h2>
-            <p class="sub">Monte sua combinação ideal com bebidas alcoólicas e não alcoólicas. Abaixo deixamos uma vitrine visual da adega; os rótulos e valores podem ser atualizados depois com o estoque real.</p>
+            <h2>Catálogo de <span class="gold">bebidas e combos</span></h2>
+            <p class="sub">Confira abaixo o catálogo da adega com cervejas, gins, whiskies e combos ilustrativos. Cada item possui sua própria imagem para deixar a experiência visual mais completa dentro do site.</p>
           </div>
         </div>
+        <div class="tabs" id="cellarTabs" role="tablist" aria-label="Categorias da adega"></div>
         <div class="cellar-grid" id="cellarGrid"></div>
-        <p class="age-note">Venda de bebidas alcoólicas proibida para menores de 18 anos. Consulte disponibilidade e preços pelo WhatsApp.</p>
+        <p class="age-note">Venda de bebidas alcoólicas proibida para menores de 18 anos. Consulte disponibilidade, preços e combos pelo WhatsApp.</p>
       </div>
     </section>
 
@@ -433,15 +434,32 @@
     ];
 
     const cellarItems = [
-      {name:'Cervejas', image:'beer', desc:'Long necks, latas, cervejas especiais e opções para acompanhar porções e refeições.'},
-      {name:'Vinhos', image:'wine', desc:'Tintos, brancos, rosés e espumantes para harmonizar com seu momento.'},
-      {name:'Whisky & Destilados', image:'whisky', desc:'Whisky, vodka, tequila, rum e outros destilados para a adega.'},
-      {name:'Gin & Drinks', image:'gin', desc:'Gins, tônicas e sugestões para drinks refrescantes.'},
-      {name:'Bebidas sem álcool', image:'soda', desc:'Refrigerantes, sucos, água, água com gás e energéticos.'},
-      {name:'Combos da Adega', image:'combo', desc:'Monte kits e sugestões de compra para compartilhar ou presentear.'}
+      {name:'Corona', category:'Cervejas', image:'corona', desc:'Cerveja importada de perfil leve para gelar e servir bem.'},
+      {name:'Corona Zero', category:'Cervejas', image:'corona_zero', desc:'Versão sem álcool para quem quer sabor com leveza.'},
+      {name:'Heineken', category:'Cervejas', image:'heineken', desc:'Clássica cerveja premium para compor a adega.'},
+      {name:'Heineken Zero', category:'Cervejas', image:'heineken_zero', desc:'Opção sem álcool para o catálogo do Hype.'},
+      {name:'Skol', category:'Cervejas', image:'skol', desc:'Cerveja popular e refrescante para o dia a dia.'},
+      {name:'Itaipava', category:'Cervejas', image:'itaipava', desc:'Cerveja leve e prática para diferentes ocasiões.'},
+      {name:'Império', category:'Cervejas', image:'imperio', desc:'Cerveja para completar a seleção da adega.'},
+      {name:'Budweiser', category:'Cervejas', image:'budweiser', desc:'Rótulo clássico para quem prefere uma lager encorpada.'},
+      {name:'Original', category:'Cervejas', image:'original', desc:'Tradicional e ideal para compartilhar.'},
+      {name:'Tanqueray', category:'Gin', image:'tanqueray', desc:'Gin clássico para drinks e gin tônica.'},
+      {name:'Beefeater', category:'Gin', image:'beefeater', desc:'Gin versátil e conhecido para coquetelaria.'},
+      {name:'Eternity', category:'Gin', image:'eternity', desc:'Gin para ampliar a variedade do catálogo.'},
+      {name:'Rocks', category:'Gin', image:'rocks', desc:'Gin com presença moderna para o portfólio da adega.'},
+      {name:'Red Label', category:'Whiskies', image:'red_label', desc:'Whisky de entrada muito procurado para doses e combos.'},
+      {name:'Black Label', category:'Whiskies', image:'black_label', desc:'Whisky premium para clientes que buscam algo mais sofisticado.'},
+      {name:"Jack Daniel's", category:'Whiskies', image:'jack_daniels', desc:'Rótulo icônico que valoriza o catálogo.'},
+      {name:'Passport', category:'Whiskies', image:'passport', desc:'Whisky para compor opções com ótimo giro.'},
+      {name:"Buchanan's", category:'Whiskies', image:'buchanans', desc:'Whisky especial para uma linha mais premium.'},
+      {name:'Combo Cerveja', category:'Combos', image:'combo_cerveja', desc:'Sugestão visual de combo com cervejas e acompanhamentos.'},
+      {name:'Combo Gin Tônica', category:'Combos', image:'combo_gin', desc:'Gin, copo e itens para compor um combo atrativo.'},
+      {name:'Combo Whisky', category:'Combos', image:'combo_whisky', desc:'Combo visual com whisky e copo para campanhas promocionais.'},
+      {name:'Combo Festa', category:'Combos', image:'combo_festa', desc:'Mix de bebidas para destacar ofertas e combos especiais.'}
     ];
 
     const categories = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Todos os dias','Marmitex P'];
+    const cellarCategories = ['Todos','Cervejas','Gin','Whiskies','Combos'];
     const format = n => n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
     let selected = 'Todos os dias';
     let cart = {};
@@ -479,13 +497,28 @@
       `).join('');
     }
 
+    let selectedCellar = 'Todos';
+
+    function renderCellarTabs(){
+      document.getElementById('cellarTabs').innerHTML = cellarCategories.map(c =>
+        `<button class="tab ${c===selectedCellar?'active':''}" aria-selected="${c===selectedCellar}" onclick="selectCellarCategory('${c}')">${c}</button>`
+      ).join('');
+    }
+
+    function selectCellarCategory(category){
+      selectedCellar = category;
+      renderCellarTabs();
+      renderCellar();
+    }
+
     function renderCellar(){
-      document.getElementById('cellarGrid').innerHTML = cellarItems.map(item => `
+      const items = cellarItems.filter(item => selectedCellar === 'Todos' || item.category === selectedCellar);
+      document.getElementById('cellarGrid').innerHTML = items.map(item => `
         <article class="cellar-card">
           <img src="assets/${item.image}.svg" alt="${item.name}" loading="lazy" />
           <div class="body">
             <div class="line"><h3>${item.name}</h3></div>
-            <p>${item.desc}</p>
+            <p><strong style="display:block;color:var(--gold-soft);margin-bottom:8px;font-size:12px;text-transform:uppercase;letter-spacing:.15em">${item.category}</strong>${item.desc}</p>
             <a class="ask" href="https://wa.me/5511925135882?text=${encodeURIComponent('Olá! Gostaria de consultar as opções de ' + item.name + ' da adega do Hype Gastrobar.') }" target="_blank" rel="noopener">Consultar no WhatsApp</a>
           </div>
         </article>
@@ -559,6 +592,7 @@
     document.getElementById('year').textContent = new Date().getFullYear();
     renderTabs();
     renderDishes();
+    renderCellarTabs();
     renderCellar();
     renderCart();
     toggleAddress();
