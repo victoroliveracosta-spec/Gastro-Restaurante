@@ -129,6 +129,10 @@
 
     .contact-grid{display:grid;grid-template-columns:1fr .95fr;gap:26px}
     .contact-box,.map-box{background:linear-gradient(165deg,#1d1713,#13100d);border:1px solid #433426;border-radius:22px;padding:24px}
+    .map-frame{position:relative;overflow:hidden;width:100%;height:380px;border:1px solid #5a4732;border-radius:18px;background:#16120f}
+    .map-frame iframe{width:100%;height:100%;border:0;display:block;filter:grayscale(.08)}
+    .map-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:#d6c2a2;font-size:13px}
+    .map-actions .ask{font-size:13px}
     .contact-box h3,.map-box h3{font:700 24px Outfit,sans-serif;margin:0 0 14px}
     .contact-box p,.map-box p{color:#cfbeaa;line-height:1.8}
     .contact-rows{display:grid;gap:12px;margin:18px 0 0}
@@ -333,8 +337,19 @@
         <div class="map-box">
           <h3>Localização</h3>
           <p>Estamos no Jardim Sabiá, em Cotia/SP, prontos para atender no local ou via delivery.</p>
-          <img src="assets/cardapio-original.png" alt="Cardápio original do Hype Gastrobar" style="border-radius:18px;border:1px solid #5a4732;max-height:420px;object-fit:cover;width:100%" />
-          <p style="margin-top:14px;font-size:13px">A imagem acima foi utilizada como base para o cadastro dos pratos e valores do site.</p>
+          <div class="map-frame">
+            <iframe
+              title="Google Maps — Hype Gastrobar, Estrada Capuava, 301, Cotia/SP"
+              src="https://maps.google.com/maps?hl=pt-BR&amp;q=Estrada%20Capuava%2C%20301%2C%20Jardim%20Sabi%C3%A1%2C%20Cotia%2C%20SP%2C%20Brasil&amp;z=16&amp;output=embed"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <div class="map-actions">
+            <span>📍 Estrada Capuava, 301 — Jardim Sabiá, Cotia/SP</span>
+            <a class="ask" href="https://www.google.com/maps/search/?api=1&amp;query=Estrada%20Capuava%2C%20301%2C%20Jardim%20Sabi%C3%A1%2C%20Cotia%2C%20SP%2C%20Brasil" target="_blank" rel="noopener noreferrer">Abrir no Google Maps ↗</a>
+          </div>
         </div>
       </div>
     </section>
