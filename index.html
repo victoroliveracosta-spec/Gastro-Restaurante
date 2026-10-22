@@ -189,8 +189,20 @@
     .shipping-status[data-state="success"]{color:#b7f0c3}
     .shipping-verified{font-size:12px;display:block;margin-top:10px;color:#dac8ae}
     .shipping-verified input{width:auto;margin-right:6px;accent-color:var(--gold)}
+    /* Endereço: CEP automático e campos separados */
     .address-row{display:grid;grid-template-columns:1fr 105px;gap:10px}
-    @media(max-width:420px){.address-row{grid-template-columns:1fr}}
+    .address-row.zip-line{grid-template-columns:minmax(0,1fr) 150px}
+    .address-row.street-line{grid-template-columns:minmax(0,1fr) 100px}
+    .address-row.city-line{grid-template-columns:minmax(0,1fr) 80px}
+    .address-row>div{min-width:0}
+    .zip-search{border:1px solid #c99b50;border-radius:10px;background:#382a1d;color:#ffe3a9;font-size:13px;font-weight:800;padding:12px 8px;align-self:end;min-height:43px}
+    .zip-search:disabled{opacity:.55;cursor:wait}
+    .zip-status{font-size:12px;min-height:19px;margin:7px 0 4px;color:#dbc7a8;line-height:1.45}
+    .zip-status[data-state="error"]{color:#ffb8a7}
+    .zip-status[data-state="success"]{color:#b7f0c3}
+    .address-help{font-size:11px;color:#c5b296;margin-top:8px;line-height:1.5}
+
+    @media(max-width:420px){.address-row{grid-template-columns:1fr}.address-row.zip-line{grid-template-columns:1fr 120px}.address-row.street-line{grid-template-columns:1fr 86px}.address-row.city-line{grid-template-columns:1fr 65px}}
 
 
     @media (max-width: 1000px){
@@ -411,12 +423,24 @@
       </select>
 
       <div id="addressArea">
-        <label for="clientAddress">Rua, número e bairro para entrega</label>
-        <input id="clientAddress" placeholder="Ex.: Rua Apucarana, 82, Jardim Sabiá" autocomplete="street-address" />
-        <div class="address-row">
-          <div><label for="clientCity">Cidade</label><input id="clientCity" value="Cotia" placeholder="Cidade" autocomplete="address-level2" /></div>
-          <div><label for="clientZip">CEP (opcional)</label><input id="clientZip" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" /></div>
+        <div class="address-row zip-line">
+          <div><label for="clientZip">CEP de entrega</label><input id="clientZip" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" /></div>
+          <button id="lookupZipButton" class="zip-search" type="button" onclick="lookupZip(true)">Buscar CEP</button>
         </div>
+        <div id="zipStatus" class="zip-status" role="status" aria-live="polite">Digite 8 números para preencher a rua, o bairro e a cidade.</div>
+        <div class="address-row street-line">
+          <div><label for="clientAddress">Rua / Avenida</label><input id="clientAddress" placeholder="Ex.: Rua Yamaguchi" autocomplete="address-line1" /></div>
+          <div><label for="clientNumber">Número</label><input id="clientNumber" placeholder="Ex.: 73" autocomplete="off" /></div>
+        </div>
+        <label for="clientNeighborhood">Bairro</label>
+        <input id="clientNeighborhood" placeholder="Ex.: Nakamura Park" autocomplete="address-level3" />
+        <label for="clientComplement">Complemento (opcional)</label>
+        <input id="clientComplement" placeholder="Ex.: Apto 12, bloco B, casa 2" autocomplete="address-line2" />
+        <div class="address-row city-line">
+          <div><label for="clientCity">Cidade</label><input id="clientCity" value="Cotia" placeholder="Cidade" autocomplete="address-level2" /></div>
+          <div><label for="clientState">UF</label><input id="clientState" value="SP" placeholder="SP" maxlength="2" autocomplete="address-level1" /></div>
+        </div>
+        <div class="address-help">O CEP preenche os dados disponíveis automaticamente. Confirme rua e bairro e informe o número para a entrega.</div>
         <div class="shipping-box">
           <b>🛵 Calcular taxa de entrega</b>
           <p>Saída: Estrada do Capuava, 301 — Jardim Sabiá, Cotia/SP.<br>R$ 1,00 por km de carro até 15 km. Acima de 15 km, taxa fixa de R$ 15,00.</p>
@@ -644,7 +668,7 @@
     // INTEGRAÇÃO DE ROTAS: crie uma chave gratuita em https://myprojects.geoapify.com/
     // Autorize o domínio do seu GitHub Pages nas restrições HTTP Referer/CORS da chave.
     // Como o site é estático, a chave estará visível no HTML. Não use chaves privadas de servidor.
-    const GEOAPIFY_API_KEY = ''; // COLE A CHAVE GEOAPIFY AQUI
+    const GEOAPIFY_API_KEY = '55c9b925746a44a4a2fdec86a830faeb'; // Geoapify: restringir aos domínios do site no painel
     const ORIGIN_ADDRESS = 'Estrada do Capuava, 301, Jardim Sabiá, Cotia, SP, 06716-580, Brasil';
     // Se o geocodificador não reconhecer o restaurante, você pode fixar o ponto do estabelecimento:
     const ORIGIN_COORDINATES = null; // opcional: {lat: -23.0, lon: -46.0} (use coordenadas verificadas)
@@ -660,11 +684,108 @@
     function shippingValueFromDistance(distanceKm){
       return Math.round(Math.min(SHIPPING_CAP_BRL, distanceKm * SHIPPING_PRICE_PER_KM) * 100) / 100;
     }
+    function readAddress(){
+      const value = id => document.getElementById(id).value.trim();
+      return {
+        street:value('clientAddress'), number:value('clientNumber'), neighborhood:value('clientNeighborhood'),
+        complement:value('clientComplement'), city:value('clientCity'), state:value('clientState').toUpperCase(),
+        zip:value('clientZip').replace(/\D/g,'')
+      };
+    }
+    function routeDeliveryAddress(){
+      const a=readAddress();
+      return [`${a.street}, ${a.number}`,a.neighborhood,a.city,a.state,a.zip,'Brasil'].filter(Boolean).join(', ');
+    }
     function fullDeliveryAddress(){
-      const street = document.getElementById('clientAddress').value.trim();
-      const city = document.getElementById('clientCity').value.trim();
-      const zip = document.getElementById('clientZip').value.trim();
-      return [street, city, 'São Paulo', zip, 'Brasil'].filter(Boolean).join(', ');
+      const a=readAddress();
+      return [`${a.street}, ${a.number}`,a.complement,a.neighborhood,`${a.city}/${a.state}`,a.zip?'CEP '+a.zip.replace(/^(\d{5})(\d{3})$/,'$1-$2'):'', 'Brasil'].filter(Boolean).join(', ');
+    }
+    let zipLookupPromise = null;
+    let zipLookupRequestId = 0;
+    let lastSuccessfulZip = '';
+    function setZipStatus(text, state='info'){
+      const el=document.getElementById('zipStatus');
+      el.textContent=text;
+      el.dataset.state=state;
+    }
+    function handleZipInput(){
+      const el=document.getElementById('clientZip');
+      let digits=el.value.replace(/\D/g,'').slice(0,8);
+      el.value=digits.length>5?digits.slice(0,5)+'-'+digits.slice(5):digits;
+      invalidateShipping();
+      if(digits.length!==8){
+        zipLookupRequestId++;
+        zipLookupPromise=null;
+        lastSuccessfulZip='';
+        document.getElementById('lookupZipButton').disabled=false;
+        document.getElementById('lookupZipButton').textContent='Buscar CEP';
+        setZipStatus('Informe os 8 dígitos do CEP para preencher automaticamente.');
+        return;
+      }
+      if(digits!==lastSuccessfulZip) lookupZip(false);
+    }
+    async function fetchJsonWithTimeout(url, timeoutMs=8500){
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),timeoutMs);
+      try{
+        const response=await fetch(url,{signal:controller.signal});
+        if(!response.ok) throw new Error(`Erro HTTP ${response.status}`);
+        return await response.json();
+      }finally{ clearTimeout(timeout); }
+    }
+    async function lookupZip(force=false){
+      const zip=document.getElementById('clientZip').value.replace(/\D/g,'');
+      if(zip.length!==8){
+        setZipStatus('Digite um CEP válido com 8 números.','error');
+        return false;
+      }
+      if(!force && zip===lastSuccessfulZip) return true;
+      const requestId=++zipLookupRequestId;
+      const button=document.getElementById('lookupZipButton');
+      button.disabled=true;
+      button.textContent='Buscando...';
+      setZipStatus('Buscando CEP e preenchendo os campos...');
+      zipLookupPromise=(async()=>{
+        let record=null;
+        try{
+          const data=await fetchJsonWithTimeout(`https://viacep.com.br/ws/${zip}/json/`);
+          if(data?.erro) throw new Error('CEP não encontrado. Verifique os números e tente novamente.');
+          record={street:data.logradouro||'',neighborhood:data.bairro||'',city:data.localidade||'',state:data.uf||''};
+        }catch(firstError){
+          if(firstError.message.startsWith('CEP não encontrado')) throw firstError;
+          const data=await fetchJsonWithTimeout(`https://brasilapi.com.br/api/cep/v1/${zip}`);
+          record={street:data.street||'',neighborhood:data.neighborhood||'',city:data.city||'',state:data.state||''};
+        }
+        if(requestId!==zipLookupRequestId || document.getElementById('clientZip').value.replace(/\D/g,'')!==zip) return false;
+        for(const [id,value] of [
+          ['clientAddress',record.street],['clientNeighborhood',record.neighborhood],
+          ['clientCity',record.city],['clientState',record.state]
+        ]){
+          // CEPs gerais podem não ter rua/bairro: mantenha esses campos editáveis.
+          document.getElementById(id).value=value||'';
+        }
+        invalidateShipping();
+        lastSuccessfulZip=zip;
+        setZipStatus(record.street
+          ? 'Endereço encontrado! Confira rua e bairro, informe o número e calcule o frete.'
+          : 'CEP encontrado, mas sem rua específica. Informe rua, número e bairro manualmente.', 'success');
+        document.getElementById(record.street?'clientNumber':'clientAddress').focus();
+        return true;
+      })();
+      try{
+        return await zipLookupPromise;
+      }catch(err){
+        if(requestId===zipLookupRequestId){
+          let msg=err?.message||'';
+          if(/Failed to fetch|NetworkError|fetch failed|Load failed/i.test(msg)) msg='Não foi possível conectar ao serviço de CEP. Se estiver usando a prévia do arquivo, tente pelo site publicado no GitHub Pages. Você também pode preencher tudo manualmente.';
+          if(err?.name==='AbortError') msg='A busca do CEP demorou. Tente novamente ou preencha o endereço manualmente.';
+          setZipStatus(msg||'Falha ao buscar CEP. Preencha o endereço manualmente.','error');
+        }
+        return false;
+      }finally{
+        if(requestId===zipLookupRequestId){button.disabled=false;button.textContent='Buscar CEP';}
+        if(requestId===zipLookupRequestId) zipLookupPromise=null;
+      }
     }
     function setShippingStatus(text, state='info'){
       const element = document.getElementById('shippingStatus');
@@ -697,18 +818,13 @@
       updateShippingTotals();
     }
     function validateDeliveryAddress(){
-      const address = document.getElementById('clientAddress').value.trim();
-      const city = document.getElementById('clientCity').value.trim();
-      if(address.length < 8 || !/\d/.test(address)){
-        throw new Error('Informe rua, número e bairro no endereço.');
-      }
-      if(city.length < 2){
-        throw new Error('Informe a cidade de entrega.');
-      }
-      const zip = document.getElementById('clientZip').value.replace(/\D/g,'');
-      if(zip && zip.length !== 8){
-        throw new Error('O CEP deve conter 8 números, ou deixe esse campo vazio.');
-      }
+      const a=readAddress();
+      if(a.street.length<3) throw new Error('Informe a rua ou avenida da entrega.');
+      if(!a.number) throw new Error('Informe o número da residência (ou S/N quando não houver).');
+      if(a.neighborhood.length<2) throw new Error('Informe o bairro da entrega.');
+      if(a.city.length<2) throw new Error('Informe a cidade da entrega.');
+      if(!/^[A-Z]{2}$/.test(a.state)) throw new Error('Informe a UF com duas letras, por exemplo, SP.');
+      if(a.zip && a.zip.length!==8) throw new Error('O CEP deve conter oito números ou ficar vazio.');
     }
     async function geoapifyGet(url){
       const controller = new AbortController();
@@ -737,10 +853,12 @@
       if(document.getElementById('fulfilment').value !== 'Entrega') return true;
       if(isCalculatingShipping) return false;
       const requestId = ++shippingRequestId;
-      const address = fullDeliveryAddress();
+      let address = '';
       const btn = document.getElementById('calculateShippingButton');
       try{
+        if(zipLookupPromise) await zipLookupPromise;
         validateDeliveryAddress();
+        address = fullDeliveryAddress();
         if(!GEOAPIFY_API_KEY.trim()) throw new Error('Cálculo automático ainda não configurado. O responsável pelo site precisa inserir uma chave Geoapify.');
         isCalculatingShipping = true;
         btn.disabled = true;
@@ -752,7 +870,7 @@
         setShippingStatus('Localizando endereços e consultando a rota de carro...');
         const origin = ORIGIN_COORDINATES || originLocationCache || await geocodeAddress(ORIGIN_ADDRESS,true);
         if(!originLocationCache) originLocationCache = origin;
-        const destination = await geocodeAddress(address,true);
+        const destination = await geocodeAddress(routeDeliveryAddress(),true);
         if(requestId !== shippingRequestId) return false;
         const waypoints = `${origin.lat},${origin.lon}|${destination.lat},${destination.lon}`;
         const url = 'https://api.geoapify.com/v1/routing?' + new URLSearchParams({waypoints,mode:'drive',format:'geojson',apiKey:GEOAPIFY_API_KEY});
@@ -770,7 +888,12 @@
       } catch(err){
         if(requestId === shippingRequestId){
           shippingQuote = null;
-          setShippingStatus(err?.name === 'AbortError' ? 'O serviço de rotas demorou demais. Tente novamente.' : err.message || 'Não foi possível calcular a rota.', 'error');
+          let message=err?.name === 'AbortError' ? 'O serviço de rotas demorou demais. Tente novamente.' : err?.message || 'Não foi possível calcular a rota.';
+          if(/Failed to fetch|NetworkError|fetch failed|Load failed/i.test(message)){
+            message='Não foi possível conectar à API de mapas. Se você está usando a prévia do arquivo, teste pelo link público do GitHub Pages. No painel Geoapify, autorize o domínio publicado (CORS/referrer) e verifique se a chave habilita Geocoding e Routing. Sem conexão, não cobramos um frete estimado.';
+          }
+          if(/(401|403)/.test(message)) message+=' Confira a chave Geoapify, os serviços permitidos e o domínio autorizado.';
+          setShippingStatus(message,'error');
           updateShippingTotals();
         }
         return false;
@@ -792,6 +915,7 @@
       const notes = document.getElementById('notes').value.trim();
       if(!name){ alert('Informe seu nome.'); document.getElementById('clientName').focus(); return; }
       if(!pickup){
+        if(zipLookupPromise) await zipLookupPromise;
         try{ validateDeliveryAddress(); }catch(err){alert(err.message);return;}
         if(!shippingQuote || shippingQuote.address !== fullDeliveryAddress()){
           const calculated = await calculateShipping();
@@ -819,16 +943,29 @@
         `*TOTAL DO PEDIDO:* ${format(grandTotal)}`,
         '', `*Nome:* ${name}`,
         `*Modalidade:* ${fulfilment}`,
-        ...(pickup ? [] : [`*Endereço:* ${fullDeliveryAddress()}`, `*Endereço encontrado no mapa:* ${shippingQuote.destination.formatted}`]),
+        ...(pickup ? [] : [
+          `*Endereço:* ${fullDeliveryAddress()}`,
+          `*Rua:* ${readAddress().street}, *nº:* ${readAddress().number}`,
+          `*Bairro:* ${readAddress().neighborhood}`,
+          ...(readAddress().complement ? [`*Complemento:* ${readAddress().complement}`] : []),
+          `*Cidade/UF:* ${readAddress().city}/${readAddress().state}`,
+          ...(readAddress().zip ? [`*CEP:* ${document.getElementById('clientZip').value}`] : []),
+          `*Endereço encontrado no mapa:* ${shippingQuote.destination.formatted}`
+        ]),
         `*Pagamento:* ${payment}`,
         ...(notes ? [`*Observações:* ${notes}`] : []),
         '', 'Por favor, confirmem disponibilidade e prazo. Obrigado!'
       ].join('\n');
       window.location.href = 'https://wa.me/5511925135882?text=' + encodeURIComponent(message);
     }
-    ['clientAddress','clientCity','clientZip'].forEach(id =>
+    ['clientAddress','clientNumber','clientNeighborhood','clientComplement','clientCity','clientState'].forEach(id =>
       document.getElementById(id).addEventListener('input', invalidateShipping)
     );
+    document.getElementById('clientZip').addEventListener('input',handleZipInput);
+    document.getElementById('clientZip').addEventListener('blur',()=>{
+      const zip=document.getElementById('clientZip').value.replace(/\D/g,'');
+      if(zip.length===8 && zip!==lastSuccessfulZip && !zipLookupPromise) lookupZip(false);
+    });
 
     const today = new Date().getDay();
     selected = ({1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado'})[today] || 'Todos os dias';
